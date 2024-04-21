@@ -1,0 +1,1 @@
+add_mlir_library(AtemIR AtemIR.cpp DEPENDS MLIRAtemIRIncGen)
