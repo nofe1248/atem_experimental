@@ -9,6 +9,8 @@ module;
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "AtemIR/include/AtemIRDialect.h"
+
 export module Atemc.Main;
 
 using namespace mlir;
@@ -16,9 +18,11 @@ using namespace mlir;
 export auto main(int argc, const char* argv[]) -> int
 {
     MLIRContext ctx;
-    ctx.loadDialect<func::FuncDialect, arith::ArithDialect>();
+    ctx.loadDialect<func::FuncDialect, arith::ArithDialect, atemir::AtemIRDialect>();
+
     auto src = parseSourceFile<ModuleOp>(argv[1], &ctx);
     src->print(llvm::outs());
     src->dump();
+
     return 0;
 }

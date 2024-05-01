@@ -1,20 +1,16 @@
-#define _ITERATOR_DEBUG_LEVEL 0
-
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Transforms/Passes.h"
-//#include "include/AtemDialect.h"
+#include "AtemIR/include/AtemIRDialect.h"
 
 using namespace mlir;
 using namespace llvm;
 
-int main(int argc, char ** argv) {
+auto main(int argc, char ** argv) -> int {
     DialectRegistry registry;
-    // 注册 Dialect
-    registry.insert<func::FuncDialect>();
-    // 注册两个 Pass
+    registry.insert<func::FuncDialect, atemir::AtemIRDialect>();
     registerCSEPass();
     registerCanonicalizerPass();
-    return asMainReturnCode(MlirOptMain(argc, argv, "toy-opt", registry));
+    return asMainReturnCode(MlirOptMain(argc, argv, "atemir-opt", registry));
 }

@@ -1,11 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 project(atem_experimental VERSION 0.0.1 LANGUAGES CXX C)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP ON)
-set(CMAKE_CXX_SCAN_FOR_MODULES ON)
-
-#set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
+cmake_policy(SET CMP0135 NEW)
 
 find_package(MLIR REQUIRED CONFIG)
 
@@ -30,7 +26,6 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${STANDALONE_SOURCE_DIR}/include)
 include_directories(${STANDALONE_BINARY_DIR}/include)
-include_directories(.)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -38,8 +33,18 @@ get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 get_property(extension_libs GLOBAL PROPERTY MLIR_EXTENSION_LIBS)
 
-add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
 add_definitions(-D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING)
 
-add_subdirectory(AtemIR)
-add_subdirectory(modules)
+include_directories(atemc)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    antlr
+    GIT_REPOSITORY https://github.com/antlr/antlr4
+    GIT_TAG ${ANTLR_TAG}
+    SOURCE_SUBDIR "runtime/Cpp"
+)
+FetchContent_MakeAvailable(antlr)
+
+add_subdirectory(atemc)

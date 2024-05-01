@@ -3,5 +3,7 @@
 
 include "AtemIRDialect.td"
 include "AtemIROps.td"
+include "AtemIRAttrs.td"
+include "AtemIRTypes.td"
 
-#endif
+#endif  //ATEM_IR_TD
