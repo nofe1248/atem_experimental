@@ -4,6 +4,6 @@
 #pragma once
 
 #include "mlir/IR/BuiltinDialect.h"
-#include "AtemIRDialect.h.inc"
+#include "Dialect/include/AtemIRDialect.h.inc"
 
 #endif //ATEMIRDIALECT_H

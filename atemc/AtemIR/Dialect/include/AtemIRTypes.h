@@ -5,7 +5,17 @@
 #include "mlir/IR/Types.h"
 #include "mlir/Interfaces/DataLayoutInterfaces.h"
 
+#include "AtemIR/Interfaces/AtemIRFPTypeInterface.h"
+
 #define GET_TYPEDEF_CLASSES
-#include "AtemIRTypes.h.inc"
+#include "Dialect/include/AtemIRTypes.h.inc"
+
+namespace atemir
+{
+namespace detail
+{
+
+}
+}
 
 #endif //ATEMIRTYPES_H

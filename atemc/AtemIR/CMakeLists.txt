@@ -1,5 +1,4 @@
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_subdirectory(include)
-add_subdirectory(lib)
-add_subdirectory(tools)
+add_subdirectory(Dialect)
+add_subdirectory(Interfaces)

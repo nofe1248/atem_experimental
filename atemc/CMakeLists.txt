@@ -21,6 +21,10 @@ add_executable(
         atemc-exp
         ${ANTLR_AtemLexer_CXX_OUTPUTS}
         ${ANTLR_AtemParser_CXX_OUTPUTS}
+        AtemIR/Dialect/lib/AtemIR.cpp
+        AtemIR/Dialect/lib/AtemIROps.cpp
+        AtemIR/Dialect/lib/AtemIRAttrs.cpp
+        AtemIR/Dialect/lib/AtemIRTypes.cpp
 )
 
 target_compile_features(atemc-exp PRIVATE cxx_std_23)

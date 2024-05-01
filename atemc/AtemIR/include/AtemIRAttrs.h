@@ -1,6 +1,0 @@
-#ifndef ATEMIRATTRS_H
-#define ATEMIRATTRS_H
-
-#define GET_ATTRDEF_CLASSES
-
-#endif //ATEMIRATTRS_H
