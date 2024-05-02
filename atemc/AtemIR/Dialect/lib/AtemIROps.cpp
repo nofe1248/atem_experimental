@@ -272,7 +272,7 @@ auto ::atemir::IfOp::verify() -> LogicalResult
 auto ::atemir::ConditionOp::getSuccessorRegions(ArrayRef<Attribute> operands, SmallVectorImpl<RegionSuccessor> &regions)
     -> void
 {
-    // TODO(cir): The condition value may be folded to a constant, narrowing
+    // The condition value may be folded to a constant, narrowing
     // down its list of possible successors.
 
     // Parent is a loop: condition may branch to the body or to the parent op.
@@ -317,6 +317,17 @@ auto ::atemir::WhileOp::getSuccessorRegions(::mlir::RegionBranchPoint point,
 }
 
 auto ::atemir::WhileOp::getLoopRegions() -> ::llvm::SmallVector<Region *>
+{
+    return {&getBody()};
+}
+
+auto ::atemir::ForOp::getSuccessorRegions(::mlir::RegionBranchPoint point,
+                                            ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> &regions) -> void
+{
+    LoopOpInterface::getLoopOpSuccessorRegions(*this, point, regions);
+}
+
+auto ::atemir::ForOp::getLoopRegions() -> ::llvm::SmallVector<Region *>
 {
     return {&getBody()};
 }

@@ -204,4 +204,62 @@ def DoWhileOp
     }];
 }
 
+def ForOp
+    : AtemIROp<"cfor", [LoopOpInterface, NoRegionArguments]> {
+    let summary = "Atem C-style for loop";
+    let description = [{
+        Represents a C/C++ style for loop. It consists of three regions:
+
+        - `cond`: single block region with the loop's condition. Should be terminated
+        with a `atemir.condition` operation.
+        - `body`: contains the loop body and an arbitrary number of blocks.
+        - `step`: single block region with the loop's step.
+    }];
+
+    let regions = (region
+        SizedRegion<1>:$cond,
+        MinSizedRegion<1>:$body,
+        SizedRegion<1>:$step
+    );
+    let assemblyFormat = [{
+        `:` `cond` $cond
+        `body` $body
+        `step` $step
+        attr-dict
+    }];
+
+    let builders = [
+        OpBuilder<(ins
+            "::mlir::function_ref<void(::mlir::OpBuilder &, ::mlir::Location)>":$condBuilder,
+            "::mlir::function_ref<void(::mlir::OpBuilder &, ::mlir::Location)>":$bodyBuilder,
+            "::mlir::function_ref<void(::mlir::OpBuilder &, ::mlir::Location)>":$stepBuilder
+        ), [{
+            ::mlir::OpBuilder::InsertionGuard guard($_builder);
+
+            // Build condition region.
+            $_builder.createBlock($_state.addRegion());
+            condBuilder($_builder, $_state.location);
+
+            // Build body region.
+            $_builder.createBlock($_state.addRegion());
+            bodyBuilder($_builder, $_state.location);
+
+            // Build step region.
+            $_builder.createBlock($_state.addRegion());
+            stepBuilder($_builder, $_state.location);
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        auto maybeGetStep() -> ::mlir::Region* { return &this->getStep(); }
+        auto getRegionsInExecutionOrder() -> ::llvm::SmallVector<::mlir::Region *> {
+            return ::llvm::SmallVector<::mlir::Region *, 3>{
+                &this->getCond(), 
+                &this->getBody(), 
+                &this->getStep()
+            };
+        }
+    }];
+}
+
 #endif  //ATEM_IR_OPS_TD

@@ -1,5 +1,5 @@
 module {
-    atemir.function @main() -> i32 {
+    atemir.function @main() -> !atemir.int<s, 64> {
         %cond = atemir.constant #atemir.bool<true>: !atemir.bool
         atemir.if %cond {
             atemir.yield

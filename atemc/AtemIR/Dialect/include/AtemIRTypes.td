@@ -92,6 +92,10 @@ def Float128Type
     }];
 }
 
+def AtemIRAnyFloatingPointType : AnyTypeOf<[
+    Float16Type, Float32Type, Float64Type, Float80Type, Float128Type
+]>;
+
 def AtemIRAnyType : AnyTypeOf<[
     IntegerType, BooleanType, Float16Type, Float32Type, Float64Type, Float80Type,
     Float128Type
