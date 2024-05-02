@@ -4,7 +4,11 @@ target_link_libraries(
         atemir-opt PRIVATE
         MLIRIR MLIRParser MLIRSupport
         AtemIR
+        AtemIRInterfaces
         MLIROptLib
         MLIRFuncDialect
+        MLIRSCFDialect
+        MLIRAsyncDialect
+        MLIRArithDialect
         MLIRTransforms
 )

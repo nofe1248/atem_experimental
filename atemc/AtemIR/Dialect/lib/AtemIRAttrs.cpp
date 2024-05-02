@@ -22,9 +22,15 @@
 using namespace mlir;
 using namespace llvm;
 
+static auto printFloatLiteral(mlir::AsmPrinter &p, llvm::APFloat value, mlir::Type ty) -> void;
+static auto parseFloatLiteral(mlir::AsmParser &parser, mlir::FailureOr<llvm::APFloat> &value, mlir::Type ty)
+    -> mlir::ParseResult;
+
 #include "AtemIR/Dialect/include/AtemIRDialect.h"
 #include "AtemIR/Dialect/include/AtemIRAttrs.h"
 #include "AtemIR/Dialect/include/AtemIRTypes.h"
+
+#include "AtemIR/Interfaces/include/AtemIRFPTypeInterface.h"
 
 #define GET_ATTRDEF_CLASSES
 #include "Dialect/include/AtemIRAttrDefs.cpp.inc"
@@ -102,3 +108,33 @@ auto ::atemir::IntegerAttr::print(::mlir::AsmPrinter &printer) const -> void
     printer << getValue();
     printer << '>';
 }
+
+static auto printFloatLiteral(mlir::AsmPrinter &p, llvm::APFloat value, mlir::Type ty) -> void {
+    p << value;
+}
+
+static auto parseFloatLiteral(mlir::AsmParser &parser, mlir::FailureOr<llvm::APFloat> &value, mlir::Type ty)
+    -> mlir::ParseResult
+{
+    double rawValue;
+    if (parser.parseFloat(rawValue)) {
+        return parser.emitError(parser.getCurrentLocation(),
+                                "expected floating-point value");
+    }
+
+    auto losesInfo = false;
+    value.emplace(rawValue);
+
+    auto tyFpInterface = mlir::dyn_cast<atemir::AtemIRFPTypeInterface>(ty);
+    if (!tyFpInterface) {
+        // Parsing of the current floating-point literal has succeeded, but the
+        // given attribute type is invalid. This error will be reported later when
+        // the attribute is being verified.
+        return success();
+    }
+
+    value->convert(tyFpInterface.getFloatSemantics(),
+                   llvm::RoundingMode::TowardZero, &losesInfo);
+    return success();
+}
+

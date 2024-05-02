@@ -21,10 +21,6 @@ add_executable(
         atemc-exp
         ${ANTLR_AtemLexer_CXX_OUTPUTS}
         ${ANTLR_AtemParser_CXX_OUTPUTS}
-        AtemIR/Dialect/lib/AtemIR.cpp
-        AtemIR/Dialect/lib/AtemIROps.cpp
-        AtemIR/Dialect/lib/AtemIRAttrs.cpp
-        AtemIR/Dialect/lib/AtemIRTypes.cpp
 )
 
 target_compile_features(atemc-exp PRIVATE cxx_std_23)
@@ -44,6 +40,9 @@ target_sources(
 target_link_libraries(
         atemc-exp PRIVATE
         antlr4_shared
+
+        AtemIR
+        AtemIRInterfaces
 
         ${dialect_libs}
         ${conversion_libs}
@@ -65,6 +64,6 @@ target_link_libraries(
         MLIRTransforms
 )
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/AtemIR/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/AtemIR)
 
 add_subdirectory(AtemIR)

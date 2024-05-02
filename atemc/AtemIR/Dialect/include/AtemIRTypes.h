@@ -5,7 +5,7 @@
 #include "mlir/IR/Types.h"
 #include "mlir/Interfaces/DataLayoutInterfaces.h"
 
-#include "AtemIR/Interfaces/AtemIRFPTypeInterface.h"
+#include "AtemIR/Interfaces/include/AtemIRFPTypeInterface.h"
 
 #define GET_TYPEDEF_CLASSES
 #include "Dialect/include/AtemIRTypes.h.inc"

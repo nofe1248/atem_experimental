@@ -3,7 +3,7 @@
 
 include "AtemIR/Dialect/include/AtemIRDialect.td"
 
-include "AtemIR/Interfaces/AtemIRFPTypeInterface.td"
+include "AtemIR/Interfaces/include/AtemIRFPTypeInterface.td"
 
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/EnumAttr.td"
@@ -14,7 +14,7 @@ class AtemIRType<string name, string typeMnemonic, list<Trait> traits = [], stri
     let mnemonic = typeMnemonic;
 }
 
-def AtemIRIntegerType : 
+def IntegerType : 
     AtemIRType<"Integer", "int", [DeclareTypeInterfaceMethods<DataLayoutTypeInterface>]> {
 
     let summary = "AtemIR integer type with arbitrary precision up to a fixed limit";
@@ -34,7 +34,7 @@ def AtemIRIntegerType :
     }];
 }
 
-def AtemIRBooleanType :
+def BooleanType :
     AtemIRType<"Boolean", "bool", [DeclareTypeInterfaceMethods<DataLayoutTypeInterface>]> {
 
     let summary = "AtemIR bool type";
@@ -45,47 +45,47 @@ def AtemIRBooleanType :
     let hasCustomAssemblyFormat = 1;
 }
 
-class AtemIRFloatingPointType<string name, string mnemonic>
+class FloatingPointType<string name, string mnemonic>
     : AtemIRType<name, mnemonic, 
     [
         DeclareTypeInterfaceMethods<DataLayoutTypeInterface>,
         DeclareTypeInterfaceMethods<AtemIRFPTypeInterface>,
     ]> {}
 
-def AtemIRFloat16Type
-    : AtemIRFloatingPointType<"Float16", "float16"> {
+def Float16Type
+    : FloatingPointType<"Float16", "float16"> {
     let summary = "AtemIR float16 type";
     let description = [{
         Floating-point type that store in IEEE-754-2008 binary16 format.
     }];
 }
 
-def AtemIRFloat32Type
-    : AtemIRFloatingPointType<"Float32", "float32"> {
+def Float32Type
+    : FloatingPointType<"Float32", "float32"> {
     let summary = "AtemIR float32 type";
     let description = [{
         Floating-point type that store in IEEE-754-2008 binary32 format.
     }];
 }
 
-def AtemIRFloat64Type
-    : AtemIRFloatingPointType<"Float64", "float64"> {
+def Float64Type
+    : FloatingPointType<"Float64", "float64"> {
     let summary = "AtemIR float64 type";
     let description = [{
         Floating-point type that store in IEEE-754-2008 binary64 format.
     }];
 }
 
-def AtemIRFloat80Type
-    : AtemIRFloatingPointType<"Float80", "float80"> {
+def Float80Type
+    : FloatingPointType<"Float80", "float80"> {
     let summary = "AtemIR float80 type";
     let description = [{
         Floating-point type that store in x87 80-bit floating-point format.
     }];
 }
 
-def AtemIRFloat128Type
-    : AtemIRFloatingPointType<"Float128", "float128"> {
+def Float128Type
+    : FloatingPointType<"Float128", "float128"> {
     let summary = "AtemIR float128 type";
     let description = [{
         Floating-point type that store in IEEE-754-2008 binary128 format.
@@ -93,7 +93,8 @@ def AtemIRFloat128Type
 }
 
 def AtemIRAnyType : AnyTypeOf<[
-    AtemIRIntegerType, AtemIRBooleanType
+    IntegerType, BooleanType, Float16Type, Float32Type, Float64Type, Float80Type,
+    Float128Type
 ]>;
 
 #endif //ATEM_IR_TYPES_TD

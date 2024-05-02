@@ -1,1 +1,2 @@
-add_mlir_interface(AtemIRFPTypeInterface)
+add_subdirectory(include)
+add_subdirectory(lib)

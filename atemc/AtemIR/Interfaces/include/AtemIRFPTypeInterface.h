@@ -5,6 +5,6 @@
 #include "llvm/ADT/APFloat.h"
 
 /// Include the tablegen'd interface declarations.
-#include "Interfaces/AtemIRFPTypeInterface.h.inc"
+#include "Interfaces/include/AtemIRFPTypeInterface.h.inc"
 
 #endif //ATEMIRFPTYPEINTERFACE_H

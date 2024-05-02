@@ -169,3 +169,103 @@ auto atemir::BooleanType::getPreferredAlignment(const ::mlir::DataLayout &dataLa
                                 ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
     return 1;
 }
+
+auto atemir::Float16Type::getFloatSemantics() const -> const llvm::fltSemantics &
+{
+    return llvm::APFloat::IEEEhalf();
+}
+
+auto atemir::Float16Type::getTypeSizeInBits(const mlir::DataLayout &dataLayout,
+                              mlir::DataLayoutEntryListRef params) const -> llvm::TypeSize {
+    return llvm::TypeSize::getFixed(getWidth());
+}
+
+auto atemir::Float16Type::getABIAlignment(const ::mlir::DataLayout &dataLayout,
+                          ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::Float16Type::getPreferredAlignment(const ::mlir::DataLayout &dataLayout,
+                                ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::Float32Type::getFloatSemantics() const -> const llvm::fltSemantics &
+{
+    return llvm::APFloat::IEEEsingle();
+}
+
+auto atemir::Float32Type::getTypeSizeInBits(const mlir::DataLayout &dataLayout,
+                              mlir::DataLayoutEntryListRef params) const -> llvm::TypeSize {
+    return llvm::TypeSize::getFixed(getWidth());
+}
+
+auto atemir::Float32Type::getABIAlignment(const ::mlir::DataLayout &dataLayout,
+                          ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::Float32Type::getPreferredAlignment(const ::mlir::DataLayout &dataLayout,
+                                ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::Float64Type::getFloatSemantics() const -> const llvm::fltSemantics &
+{
+    return llvm::APFloat::IEEEdouble();
+}
+
+auto atemir::Float64Type::getTypeSizeInBits(const mlir::DataLayout &dataLayout,
+                              mlir::DataLayoutEntryListRef params) const -> llvm::TypeSize {
+    return llvm::TypeSize::getFixed(getWidth());
+}
+
+auto atemir::Float64Type::getABIAlignment(const ::mlir::DataLayout &dataLayout,
+                          ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::Float64Type::getPreferredAlignment(const ::mlir::DataLayout &dataLayout,
+                                ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::Float80Type::getFloatSemantics() const -> const llvm::fltSemantics &
+{
+    return llvm::APFloat::x87DoubleExtended();
+}
+
+auto atemir::Float80Type::getTypeSizeInBits(const mlir::DataLayout &dataLayout,
+                              mlir::DataLayoutEntryListRef params) const -> llvm::TypeSize {
+    return llvm::TypeSize::getFixed(16);
+}
+
+auto atemir::Float80Type::getABIAlignment(const ::mlir::DataLayout &dataLayout,
+                          ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return 16;
+}
+
+auto atemir::Float80Type::getPreferredAlignment(const ::mlir::DataLayout &dataLayout,
+                                ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return 16;
+}
+
+auto atemir::Float128Type::getFloatSemantics() const -> const llvm::fltSemantics &
+{
+    return llvm::APFloat::IEEEquad();
+}
+
+auto atemir::Float128Type::getTypeSizeInBits(const mlir::DataLayout &dataLayout,
+                              mlir::DataLayoutEntryListRef params) const -> llvm::TypeSize {
+    return llvm::TypeSize::getFixed(getWidth());
+}
+
+auto atemir::Float128Type::getABIAlignment(const ::mlir::DataLayout &dataLayout,
+                          ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::Float128Type::getPreferredAlignment(const ::mlir::DataLayout &dataLayout,
+                                ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
+    return (uint64_t)(getWidth() / 8);
+}

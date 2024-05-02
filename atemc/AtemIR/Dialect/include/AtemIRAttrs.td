@@ -12,7 +12,7 @@ class AtemIRAttr<string name, string attrMnemonic, list<Trait> traits = []>
     let mnemonic = attrMnemonic;
 }
 
-def AtemIRBooleanAttr
+def BooleanAttr
     : AtemIRAttr<"Boolean", "bool", [TypedAttrInterface]> {
     let summary = "Represent true/false for !atemir.bool types";
     let description = [{
@@ -26,7 +26,7 @@ def AtemIRBooleanAttr
     }];
 }
 
-def AtemIRIntegerAttr
+def IntegerAttr
     : AtemIRAttr<"Integer", "int", [TypedAttrInterface]> {
     let summary = "An attribute containing a integer value";
     let description = [{
@@ -48,7 +48,7 @@ def AtemIRIntegerAttr
     let skipDefaultBuilders = 1;
 }
 
-def AtemIRFloatingPointAttr
+def FloatingPointAttr
     : AtemIRAttr<"FloatingPoint", "fp", [TypedAttrInterface]> {
     let summary = "An attribute containing a floating-point value";
     let description = [{
