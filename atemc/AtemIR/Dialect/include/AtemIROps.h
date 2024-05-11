@@ -14,6 +14,7 @@
 
 #include "AtemIR/Dialect/include/AtemIRDialect.h"
 #include "AtemIR/Dialect/include/AtemIRTypes.h"
+#include "AtemIR/Dialect/include/AtemIROpEnums.h"
 
 #include "AtemIR/Interfaces/include/AtemIRLoopOpInterface.h"
 

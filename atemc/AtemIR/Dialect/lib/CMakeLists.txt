@@ -4,8 +4,9 @@ add_mlir_library(
         AtemIRTypes.cpp
         AtemIRAttrs.cpp
         AtemIROps.cpp
+        AtemIROpEnums.cpp
 
         DEPENDS
         MLIRAtemIRIncGen
-        AtemIRAttrDefsIncGen
+        MLIRAtemIRAttrDefsIncGen
 )

@@ -6,6 +6,7 @@ include "mlir/IR/OpBase.td"
 include "AtemIR/Dialect/include/AtemIRDialect.td"
 include "AtemIR/Dialect/include/AtemIRTypes.td"
 include "AtemIR/Dialect/include/AtemIRAttrs.td"
+include "AtemIR/Dialect/include/AtemIROpEnums.td"
 
 include "AtemIR/Interfaces/include/AtemIRLoopOpInterface.td"
 
@@ -41,14 +42,14 @@ def ConstantOp
     }];
 
     let arguments = (ins TypedAttrInterface:$value);
-    let results = (outs AnyType:$res);
+    let results = (outs AtemIRAnyType:$res);
 
     let assemblyFormat = "attr-dict $value";
 }
 
 def ReturnOp : AtemIROp<"return", [Terminator, ReturnLike]> {
     let summary = "Return operation";
-    let arguments = (ins AnyType:$data);
+    let arguments = (ins AtemIRAnyType:$data);
     let assemblyFormat = "$data attr-dict `:` type($data)";
 }
 
@@ -260,6 +261,86 @@ def ForOp
             };
         }
     }];
+}
+
+def UnaryOp
+    : AtemIROp<"unary", [Pure, SameOperandsAndResultType]> {
+    let summary = "Unary operations";
+    let description = [{
+        `atemir.unary` performs the unary operation according to the
+        specified operation kind.
+
+        It requires one input operand and has one result, both types
+        should be the same.
+    }];
+
+    let results = (outs AtemIRAnyType:$result);
+    let arguments = (ins Arg<UnaryOpKind, "UnaryOpKind">:$kind, Arg<AtemIRAnyType>:$input);
+
+    let assemblyFormat = [{
+        $kind $input `:` type($input) `->` type($result) attr-dict
+    }];
+
+    let hasVerifier = 1;
+}
+
+def BinaryOp
+    : AtemIROp<"binary", [Pure, SameTypeOperands, SameOperandsAndResultType]> {
+    let summary = "Binary operations";
+    let description = [{
+        `atemir.binary` performs the binary operation according to the
+        specified operation kind.
+
+        It requires two input operand and has one result, all types
+        should be the same.
+    }];
+
+    let results = (outs AtemIRAnyType:$result);
+    let arguments = (ins 
+        Arg<BinaryOpKind, "BinaryOpKind">:$kind,
+        AtemIRAnyType:$lhs,
+        AtemIRAnyType:$rhs,
+        UnitAttr:$no_unsigned_wrap,
+        UnitAttr:$no_signed_wrap
+    );
+
+    let assemblyFormat = [{
+        $kind $lhs $rhs 
+        (`nsw` $no_signed_wrap^)?
+        (`nuw` $no_unsigned_wrap^)?
+        `:` type($lhs) `->` type($result) attr-dict
+    }];
+
+    let hasVerifier = 1;
+}
+
+def CompareOp
+    : AtemIROp<"compare", [Pure, SameTypeOperands]> {
+    let summary = "Compare two values and produce a boolean result";
+    let description = [{
+        `atemir.cmp` compares two input operands of the same type and produces a
+        `atemir.bool` result. The kinds of comparison available are:
+        - `lt`: Lesser Than
+        - `le`: 
+        - `gt`: Greater Than
+        - `ge`: 
+        - `eq`: Equal
+        - `ne`: Not Equal
+
+        Examples:
+        ```mlir
+        %0 = atemir.cmp gt %1 %2 : !atemir.i32
+        ```
+    }];
+
+    let arguments = (ins Arg<CompareOpKind, "compare kind">:$kind, AtemIRAnyType:$lhs, AtemIRAnyType:$rhs);
+    let results = (outs BooleanType:$result);
+
+    let assemblyFormat = [{
+        $kind $lhs $rhs `:` type($lhs) attr-dict
+    }];
+
+    let hasVerifier = 0;
 }
 
 #endif  //ATEM_IR_OPS_TD

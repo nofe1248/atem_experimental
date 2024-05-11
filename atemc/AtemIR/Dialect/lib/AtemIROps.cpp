@@ -331,3 +331,13 @@ auto ::atemir::ForOp::getLoopRegions() -> ::llvm::SmallVector<Region *>
 {
     return {&getBody()};
 }
+
+auto ::atemir::UnaryOp::verify() -> LogicalResult
+{
+    return success();
+}
+
+auto ::atemir::BinaryOp::verify() -> LogicalResult
+{
+    return success();
+}
