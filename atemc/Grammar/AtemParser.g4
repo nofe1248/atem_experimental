@@ -5,7 +5,7 @@ options {
 }
 
 program:
-	expression? EOF
+	module_declaration_expression? EOF
 ;
 
 expression:
@@ -40,7 +40,23 @@ declaration_expression:
 ;
 
 function_declaration_expression:
-    Identifier Colon KeywordFunction type_expression? Assign expression_or_block
+    Identifier Colon KeywordFunction function_argument_list? (Arrow function_return_type_list)? Assign expression_or_block
+;
+
+function_argument_list:
+    LeftParenthese function_argument (Comma function_argument)* RightParenthese
+;
+
+function_argument:
+    function_argument_name type_annotation
+;
+
+function_argument_name:
+    Identifier
+;
+
+function_return_type_list:
+    type_expression (Comma type_expression)?
 ;
 
 module_declaration_expression:
@@ -151,32 +167,46 @@ type_expression:
 ;
 
 function_type:
-    function_argument_list Arrow? function_return_type
+    LeftParenthese function_type_argument_list RightParenthese (Arrow function_type_return_type_list)?
 ;
 
-function_argument_list:
-    function_argument (Comma function_argument)*
+function_type_argument_list:
+    function_type_argument (Comma function_type_argument)*
 ;
 
-function_argument:
-    function_parameter_name type_annotation?
-;
-
-function_parameter_name:
-    Identifier
-;
-
-function_return_type:
+function_type_argument:
     type_expression
+;
+
+function_type_return_type_list:
+    type_expression (Comma type_expression)?
 ;
 
 simple_type:
     integer_type |
+    floating_point_type |
     boolean_type
 ;
 
 integer_type:
+    unsigned_integer_type |
+    signed_integer_type
+;
+
+signed_integer_type:
     KeywordInt
+;
+
+unsigned_integer_type:
+    KeywordUInt
+;
+
+floating_point_type:
+    KeywordFloat16 |
+    KeywordFloat32 |
+    KeywordFloat64 |
+    KeywordFloat80 |
+    KeywordFloat128
 ;
 
 boolean_type:

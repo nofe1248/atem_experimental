@@ -3,6 +3,9 @@ set(
         AtemIROps.td
 )
 add_mlir_dialect(AtemIR atemir)
+add_mlir_doc(AtemIROps AtemIROps Dialects/ -gen-op-doc)
+add_mlir_doc(AtemIRAttrs AtemIRAttrs Dialects/ -gen-attrdef-doc)
+add_mlir_doc(AtemIRTypes AtemIRTypes Dialects/ -gen-typedef-doc)
 
 mlir_tablegen(AtemIRAttrDefs.h.inc -gen-attrdef-decls
         -attrdefs-dialect=atemir)

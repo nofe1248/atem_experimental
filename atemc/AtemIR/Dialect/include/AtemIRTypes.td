@@ -14,6 +14,14 @@ class AtemIRType<string name, string typeMnemonic, list<Trait> traits = [], stri
     let mnemonic = typeMnemonic;
 }
 
+def UnitType :
+    AtemIRType<"Unit", "unit"> {
+    let summary = "AtemIR unit type";
+    let description = [{
+        `!atemir.unit` type represents a unit type in Atem.
+    }];
+}
+
 def IntegerType : 
     AtemIRType<"Integer", "int", [DeclareTypeInterfaceMethods<DataLayoutTypeInterface>]> {
 
@@ -33,6 +41,42 @@ def IntegerType :
         auto isUnsigned() const -> bool { return !getIsSigned(); }
     }];
 }
+
+class UInt<int width>
+    : Type<
+        And<[
+            CPred<"$_self.isa<::atemir::IntegerType>()">,
+            CPred<"$_self.cast<::atemir::IntegerType>().isUnsigned()">,
+            CPred<"$_self.cast<::atemir::IntegerType>().getWidth() == " # width>
+        ]>
+    > {
+    int bitwidth = width;
+}
+
+class SInt<int width>
+    : Type<
+        And<[
+            CPred<"$_self.isa<::atemir::IntegerType>()">,
+            CPred<"$_self.cast<::atemir::IntegerType>().isSigned()">,
+            CPred<"$_self.cast<::atemir::IntegerType>().getWidth() == " # width>
+        ]>
+    > {
+    int bitwidth = width;
+}
+
+def UInt1 : UInt<1>;
+def UInt8 : UInt<8>;
+def UInt16 : UInt<16>;
+def UInt31 : UInt<32>;
+def UInt64 : UInt<64>;
+def UInt128 : UInt<128>;
+
+def SInt1 : SInt<1>;
+def SInt8 : SInt<8>;
+def SInt16 : SInt<16>;
+def SInt31 : SInt<32>;
+def SInt64 : SInt<64>;
+def SInt128 : SInt<128>;
 
 def BooleanType :
     AtemIRType<"Boolean", "bool", [DeclareTypeInterfaceMethods<DataLayoutTypeInterface>]> {
@@ -92,13 +136,71 @@ def Float128Type
     }];
 }
 
+def AtemFunctionType
+    : AtemIRType<"Function", "function"> {
+    let summary = "AtemIR function type";
+    let description = [{
+        `!atemir.function` is a function type. It contains a single return type and a
+        list of parameter types.
+
+        Example:
+        ```mlir
+        ```
+    }];
+
+    let parameters = (
+        ins ArrayRefParameter<"Type">:$inputs,
+        ArrayRefParameter<"Type">:$results
+    );
+
+    let assemblyFormat = [{
+        `<` `(` $inputs `)` `->` $results `>`
+    }];
+
+    let builders = [
+        TypeBuilderWithInferredContext<
+        (ins "::mlir::ArrayRef<::mlir::Type>":$inputs, "::mlir::ArrayRef<::mlir::Type>":$results), [{
+            return $_get(results[0].getContext(), inputs, results);
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        /// Returns the `i`th input operand type. Asserts if out of bounds.
+        auto getInput(unsigned i) -> ::mlir::Type const { return getInputs()[i]; }
+
+        /// Returns the number of arguments to the function.
+        auto getNumInputs() -> unsigned const { return getInputs().size(); }
+
+        /// Returns whether the function is returns void.
+        auto isReturningUnit() -> bool const;
+
+        /// Returns a clone of this function type with the given argument
+        /// and result types.
+        auto clone(::mlir::TypeRange inputs, ::mlir::TypeRange results) -> ::atemir::FunctionType const;
+    }];
+}
+
+def PointerType
+    : AtemIRType<"Pointer", "ptr", [DeclareTypeInterfaceMethods<DataLayoutTypeInterface>]> {
+    let summary = "AtemIR pointer type";
+    let description = [{
+        `atemir.ptr` is a raw pointer in Atem.
+    }];
+
+    let parameters = (ins "::mlir::Type":$pointee);
+
+    let assemblyFormat = [{
+        `<` $pointee `>`
+    }];
+}
+
 def AtemIRAnyFloatingPointType : AnyTypeOf<[
     Float16Type, Float32Type, Float64Type, Float80Type, Float128Type
 ]>;
 
 def AtemIRAnyType : AnyTypeOf<[
     IntegerType, BooleanType, Float16Type, Float32Type, Float64Type, Float80Type,
-    Float128Type
+    Float128Type, AtemFunctionType, UnitType
 ]>;
 
 #endif //ATEM_IR_TYPES_TD

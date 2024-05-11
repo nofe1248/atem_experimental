@@ -1,5 +1,5 @@
 fibTest: module = {
-    fibonacci: function n: Int32 -> Int32 = {
+    fibonacci: function(n: Int32) -> Int32 = {
         result : var Int32 = 0
         pred1: var Int32 = 1
         pred2: var Int32 = 1

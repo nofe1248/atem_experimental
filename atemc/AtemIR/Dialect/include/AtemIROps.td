@@ -49,24 +49,65 @@ def ConstantOp
 
 def ReturnOp : AtemIROp<"return", [Terminator, ReturnLike]> {
     let summary = "Return operation";
-    let arguments = (ins AtemIRAnyType:$data);
-    let assemblyFormat = "$data attr-dict `:` type($data)";
+    let description = [{
+        `atemir.return` returns from a function with a return value.
+
+        Examples:
+        ```mlir
+        atemir.function @main() -> !atemir.int<s, 64> {
+            %0 = atemir.constant #atemir.int<42>: !atemir.int<s, 64>
+            atemir.return %0: !atemir.int<s, 64>
+        }
+        ```
+    }];
+    let arguments = (ins Variadic<AtemIRAnyType>:$data);
+    let assemblyFormat = "attr-dict ($data^ `:` type($data))?";
 }
 
-def FunctionOp : AtemIROp<"function", [
-    IsolatedFromAbove,
-    FunctionOpInterface,
-    RegionKindInterface]> {
+def FunctionOp : AtemIROp<"function", 
+    [
+        AutomaticAllocationScope,
+        IsolatedFromAbove,
+        FunctionOpInterface,
+        RegionKindInterface
+    ]> {
     let summary = "Function operation";
+    let description = [{
+        `atemir.function` represents a function in Atem.
+
+        Examples:
+        ```mlir
+        atemir.function @main() -> !atemir.int<s, 64> {
+            %0 = atemir.constant #atemir.int<42>: !atemir.int<s, 64>
+            atemir.return %0: !atemir.int<s, 64>
+        }
+        ```
+    }];
     let arguments = (ins
         SymbolNameAttr:$sym_name,
-        TypeAttrOf<FunctionType>:$function_type,
+        TypeAttrOf<AtemFunctionType>:$function_type,
+        OptionalAttr<StrAttr>:$sym_visibility,
         OptionalAttr<DictArrayAttr>:$arg_attrs,
         OptionalAttr<DictArrayAttr>:$res_attrs
     );
-    dag regions = (region AnyRegion:$body);
+    let regions = (region AnyRegion:$body);
+
+    let builders = [OpBuilder<(ins
+        "::mlir::StringRef":$name, "::atemir::FunctionType":$type,
+        CArg<"::mlir::ArrayRef<::mlir::NamedAttribute>", "{}">:$attrs,
+        CArg<"::mlir::ArrayRef<::mlir::DictionaryAttr>", "{}">:$argAttrs)
+    >];
+
     let hasCustomAssemblyFormat = true;
     let extraClassDeclaration = [{
+        static ::atemir::FunctionOp create(::mlir::Location location, ::mlir::StringRef name, ::atemir::FunctionType type,
+                         ::mlir::ArrayRef<::mlir::NamedAttribute> attrs = {});
+        static ::atemir::FunctionOp create(::mlir::Location location, ::mlir::StringRef name, ::atemir::FunctionType type,
+                         ::mlir::Operation::dialect_attr_range attrs);
+        static ::atemir::FunctionOp create(::mlir::Location location, ::mlir::StringRef name, ::atemir::FunctionType type,
+                         ::mlir::ArrayRef<::mlir::NamedAttribute> attrs,
+                         ::mlir::ArrayRef<::mlir::DictionaryAttr> argAttrs);
+
         mlir::Region * getCallableRegion() {return &getBody();}
 
         // Method of CallableOpInterface
@@ -130,7 +171,15 @@ def YieldOp
     : AtemIROp<"yield", [ReturnLike, Terminator]> {
     let summary = "Yielding the control from current block to its parent block";
     let description = [{
-
+        Examples:
+        ```mlir
+        atemir.while {
+            atemir.yield
+        } do {
+            %while_loop_cond = atemir.constant #atemir.bool<true>: !atemir.bool
+            atemir.condition(%while_loop_cond)
+        }
+        ```
     }];
 
     let arguments = (ins Variadic<AtemIRAnyType>:$args);
@@ -151,6 +200,16 @@ def ConditionOp
         branch to different regions.
         This operation can be only used in `cir.while` and `cir.do` currently,
         but the set of usable operations is likely to be expanded in the future.
+
+        Examples:
+        ```mlir
+        atemir.while {
+            atemir.yield
+        } do {
+            %while_loop_cond = atemir.constant #atemir.bool<true>: !atemir.bool
+            atemir.condition(%while_loop_cond)
+        }
+        ```
     }];
 
     let arguments = (ins BooleanType:$cond);
@@ -191,6 +250,16 @@ def WhileOp
         - `cond`: single block region with the loop's condition. Should be terminated
         with a `atemir.condition` operation.
         - `body`: contains the loop body and an arbitrary number of blocks.
+
+        Examples:
+        ```mlir
+        atemir.while {
+            atemir.yield
+        } do {
+            %while_loop_cond = atemir.constant #atemir.bool<true>: !atemir.bool
+            atemir.condition(%while_loop_cond)
+        }
+        ```
     }];
 }
 
@@ -202,6 +271,16 @@ def DoWhileOp
     let description = [{
         The `atemir.do` operation represents a do-while loop in Atem. Identical
         to `atemir.while` but the condition is evaluated after the body.
+
+        Examples:
+        ```mlir
+        atemir.do {
+            %do_while_loop_cond = atemir.constant #atemir.bool<true>: !atemir.bool
+            atemir.condition(%do_while_loop_cond)
+        } while {
+            atemir.yield
+        }
+        ```
     }];
 }
 
@@ -215,6 +294,18 @@ def ForOp
         with a `atemir.condition` operation.
         - `body`: contains the loop body and an arbitrary number of blocks.
         - `step`: single block region with the loop's step.
+
+        Example:
+        ```mlir
+        atemir.cfor : cond {
+            %cfor_loop_cond = atemir.constant #atemir.bool<true>: !atemir.bool
+            atemir.condition(%cfor_loop_cond)
+        } body {
+            atemir.yield
+        } step {
+            atemir.yield
+        }
+        ```
     }];
 
     let regions = (region
@@ -272,6 +363,11 @@ def UnaryOp
 
         It requires one input operand and has one result, both types
         should be the same.
+
+        Examples:
+        ```mlir
+        %0 = atemir.unary neg %1 : !atemir.int<s, 64> -> !atemir.int<s, 64>
+        ```
     }];
 
     let results = (outs AtemIRAnyType:$result);
@@ -293,6 +389,11 @@ def BinaryOp
 
         It requires two input operand and has one result, all types
         should be the same.
+
+        Examples:
+        ```mlir
+        %0 = atemir.binary add %1 %2 : !atemir.int<s, 64> -> !atemir.int<s, 64>
+        ```
     }];
 
     let results = (outs AtemIRAnyType:$result);
@@ -329,7 +430,7 @@ def CompareOp
 
         Examples:
         ```mlir
-        %0 = atemir.cmp gt %1 %2 : !atemir.i32
+        %0 = atemir.cmp gt %1 %2 : !atemir.int<s, 64>
         ```
     }];
 
@@ -341,6 +442,101 @@ def CompareOp
     }];
 
     let hasVerifier = 0;
+}
+
+class AllocateTypesMatchWith<string summary, string lhsArg, string rhsArg, string transform,
+    string comparator = "std::equal_to<>()"> 
+    : PredOpTrait<summary, CPred<
+        comparator # "(" #
+        !subst("$_self", "$" # lhsArg # ".getType()", transform) #
+        ", $" # rhsArg # ")"
+    >> {
+    string lhs = lhsArg;
+    string rhs = rhsArg;
+    string transformer = transform;
+}
+
+def AllocateOp
+    : AtemIROp<"allocate", [
+        AllocateTypesMatchWith<
+            "'allocateType' matches pointee type of 'addr'",
+            "addr", "allocateType",
+            "::mlir::cast<::atemir::PointerType>($_self).getPointee()"
+        >
+    ]> {
+    let summary = "Define a local variable in Atem";
+    let description = [{
+        `atemir.allocate` operation defines a local variable in scope.
+
+        The presence `init` attribute indicates that the local variable represented
+        by this operation was originally initialized in Atem source code. In such
+        cases, the first use contains the initialization.
+
+        The result type is a pointer to the input's type.
+
+        Examples:
+        ```mlir
+        //count: var int32 = 3
+        %0 = atemir.allocate !atemir.int<s, 32>, !atemir.ptr<!atemir.int<s, 32>>, ["count", init] {alignment = 4 : !atemir.int<s, 64>}
+        ```
+    }];
+
+    let arguments = (ins
+        TypeAttr:$allocateType,
+        StrAttr:$name,
+        UnitAttr:$init,
+        ConfinedAttr<OptionalAttr<I64Attr>, [IntMinValue<0>]>:$alignment
+    );
+    let results = (outs Res<PointerType, "", [MemAlloc<AutomaticAllocationScopeResource>]>:$addr);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+        OpBuilder<(ins "::mlir::Type":$addr, "::mlir::Type":$allocaType,
+                    "::mlir::StringRef":$name,
+                    "::mlir::IntegerAttr":$alignment)>
+    ];
+
+    let extraClassDeclaration = [{
+        // Whether the alloca input type is a pointer.
+        bool isPointerType() { return ::mlir::isa<::atemir::PointerType>(getAllocateType()); }
+    }];
+
+  // FIXME: we should not be printing `cir.ptr` below, that should come
+  // from the pointer type directly.
+    let assemblyFormat = [{
+        $allocateType `->` type($addr) `,`
+        `[` $name
+        (`,` `init` $init^)?
+        `]`
+        attr-dict
+    }];
+
+    let hasVerifier = 0;
+}
+
+def LoadOp
+    : AtemIROp<"load", [
+        TypesMatchWith<
+            "type of 'result' matches pointee type of 'addr'",
+            "addr", "result",
+            "::mlir::cast<::atemir::PointerType>($_self).getPointee()"
+        >
+    ]> {
+    let summary = "Load value from specified memory address";
+    let description = [{
+
+    }];
+}
+
+def StoreOp
+    : AtemIROp<"store", [
+        TypesMatchWith<
+            "type of 'result' matches pointee type of 'addr'",
+            "addr", "result",
+            "::mlir::cast<::atemir::PointerType>($_self).getPointee()"
+        >
+    ]> {
+
 }
 
 #endif  //ATEM_IR_OPS_TD

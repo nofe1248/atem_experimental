@@ -1,9 +1,5 @@
 module;
 
-#include "AtemLexer.h"
-
 export module Atemc.Lexer.ANTLR4Lexer;
 
-export {
-
-}
+export import Atemc.Lexer.ANTLR4Lexer.ErrorListener;

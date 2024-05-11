@@ -30,11 +30,18 @@ set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 target_sources(
         atemc-exp PRIVATE
         FILE_SET atemc_exp_cpp_modules TYPE CXX_MODULES FILES
+        Exceptions/Atemc.Exceptions.cppm
         Main/Atemc.Main.cppm
         Lexer/Atemc.Lexer.cppm
         Lexer/ANTLR4Lexer/Atemc.Lexer.ANTLR4Lexer.cppm
+        Lexer/ANTLR4Lexer/Atemc.Lexer.ANTLR4Lexer.ErrorListener.cppm
         Parser/Atemc.Parser.cppm
         Parser/ANTLR4Parser/Atemc.Parser.ANTLR4Parser.cppm
+        Parser/ANTLR4Parser/Atemc.Parser.ANTLR4Parser.Listener.cppm
+        Parser/ANTLR4Parser/Atemc.Parser.ANTLR4Parser.Visitor.cppm
+        Parser/ANTLR4Parser/Atemc.Parser.ANTLR4Parser.ErrorListener.cppm
+        Utils/Atemc.Utils.cppm
+        Utils/Atemc.Utils.Unimplemented.cppm
 )
 
 target_link_libraries(
@@ -67,3 +74,9 @@ target_link_libraries(
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/AtemIR)
 
 add_subdirectory(AtemIR)
+
+find_package(Backward CONFIG REQUIRED)
+target_link_libraries(atemc-exp PRIVATE Backward::Backward)
+
+find_package(libdwarf CONFIG REQUIRED)
+target_link_libraries(atemc-exp PRIVATE libdwarf::dwarf)

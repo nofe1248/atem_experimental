@@ -124,6 +124,11 @@ auto atemir::IntegerType::parse(AsmParser &parser) -> Type
     return IntegerType::get(context, width, isSigned);
 }
 
+auto atemir::FunctionType::clone(::mlir::TypeRange inputs, ::mlir::TypeRange results) -> ::atemir::FunctionType const
+{
+    return atemir::FunctionType::get(llvm::to_vector(inputs), llvm::to_vector(results));
+}
+
 auto atemir::IntegerType::print(mlir::AsmPrinter &printer) const -> void
 {
     auto sign = this->getIsSigned() ? 's' : 'u';
@@ -268,4 +273,22 @@ auto atemir::Float128Type::getABIAlignment(const ::mlir::DataLayout &dataLayout,
 auto atemir::Float128Type::getPreferredAlignment(const ::mlir::DataLayout &dataLayout,
                                 ::mlir::DataLayoutEntryListRef params) const -> uint64_t {
     return (uint64_t)(getWidth() / 8);
+}
+
+auto atemir::PointerType::getTypeSizeInBits(const ::mlir::DataLayout &dataLayout,
+                               ::mlir::DataLayoutEntryListRef params) const -> llvm::TypeSize
+{
+    return llvm::TypeSize::getFixed(64);
+}
+
+auto atemir::PointerType::getABIAlignment(const ::mlir::DataLayout &dataLayout,
+                                          ::mlir::DataLayoutEntryListRef params) const -> uint64_t
+{
+    return 8;
+}
+
+auto atemir::PointerType::getPreferredAlignment(const ::mlir::DataLayout &dataLayout,
+                                          ::mlir::DataLayoutEntryListRef params) const -> uint64_t
+{
+    return 8;
 }

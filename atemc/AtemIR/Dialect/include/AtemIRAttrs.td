@@ -12,6 +12,18 @@ class AtemIRAttr<string name, string attrMnemonic, list<Trait> traits = []>
     let mnemonic = attrMnemonic;
 }
 
+def AtemUnitAttr
+    : AtemIRAttr<"Unit", "unit", [TypedAttrInterface]> {
+    let summary = "Represent a unit value";
+    let description = [{
+        The `#atemir.unit` represents a unit value.
+    }];
+
+    let parameters = (ins AttributeSelfTypeParameter<"", "::atemir::UnitType">:$type);
+
+    let assemblyFormat = [{}];
+}
+
 def BooleanAttr
     : AtemIRAttr<"Boolean", "bool", [TypedAttrInterface]> {
     let summary = "Represent true/false for !atemir.bool types";
@@ -34,11 +46,11 @@ def IntegerAttr
         value of the specified integer type.
     }];
 
-    let parameters = (ins AttributeSelfTypeParameter<"">:$type, "APInt":$value);
+    let parameters = (ins AttributeSelfTypeParameter<"">:$type, "mlir::APInt":$value);
 
     let builders = [
         AttrBuilderWithInferredContext<(ins "::mlir::Type":$type,
-                                        "const APInt &":$value), [{
+                                        "const ::mlir::APInt &":$value), [{
             return $_get(type.getContext(), type, value);
         }]>
     ];
@@ -56,11 +68,11 @@ def FloatingPointAttr
         value of the specified floating-point type.
     }];
 
-    let parameters = (ins AttributeSelfTypeParameter<"">:$type, "APFloat":$value);
+    let parameters = (ins AttributeSelfTypeParameter<"">:$type, "mlir::APFloat":$value);
 
     let builders = [
-        AttrBuilderWithInferredContext<(ins "Type":$type,
-                                            "const APFloat &":$value), [{
+        AttrBuilderWithInferredContext<(ins "::mlir::Type":$type,
+                                            "const ::mlir::APFloat &":$value), [{
         return $_get(type.getContext(), type, value);
         }]>,
     ];
