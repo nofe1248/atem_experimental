@@ -69,7 +69,9 @@ def FunctionOp : AtemIROp<"function",
         AutomaticAllocationScope,
         IsolatedFromAbove,
         FunctionOpInterface,
-        RegionKindInterface
+        RegionKindInterface,
+        Symbol,
+        CallableOpInterface
     ]> {
     let summary = "Function operation";
     let description = [{
@@ -86,29 +88,41 @@ def FunctionOp : AtemIROp<"function",
     let arguments = (ins
         SymbolNameAttr:$sym_name,
         TypeAttrOf<AtemFunctionType>:$function_type,
+        DefaultValuedAttr<GlobalLinkageKind, "GlobalLinkageKind::ExternalLinkage">:$linkage,
         OptionalAttr<StrAttr>:$sym_visibility,
         OptionalAttr<DictArrayAttr>:$arg_attrs,
         OptionalAttr<DictArrayAttr>:$res_attrs
     );
     let regions = (region AnyRegion:$body);
 
+    let skipDefaultBuilders = 1;
     let builders = [OpBuilder<(ins
         "::mlir::StringRef":$name, "::atemir::FunctionType":$type,
+        CArg<"GlobalLinkageKind", "GlobalLinkageKind::ExternalLinkage">:$linkage,
         CArg<"::mlir::ArrayRef<::mlir::NamedAttribute>", "{}">:$attrs,
         CArg<"::mlir::ArrayRef<::mlir::DictionaryAttr>", "{}">:$argAttrs)
     >];
 
-    let hasCustomAssemblyFormat = true;
     let extraClassDeclaration = [{
-        static ::atemir::FunctionOp create(::mlir::Location location, ::mlir::StringRef name, ::atemir::FunctionType type,
-                         ::mlir::ArrayRef<::mlir::NamedAttribute> attrs = {});
-        static ::atemir::FunctionOp create(::mlir::Location location, ::mlir::StringRef name, ::atemir::FunctionType type,
-                         ::mlir::Operation::dialect_attr_range attrs);
-        static ::atemir::FunctionOp create(::mlir::Location location, ::mlir::StringRef name, ::atemir::FunctionType type,
-                         ::mlir::ArrayRef<::mlir::NamedAttribute> attrs,
-                         ::mlir::ArrayRef<::mlir::DictionaryAttr> argAttrs);
+        ::mlir::Region * getCallableRegion() {return &getBody();}
 
-        mlir::Region * getCallableRegion() {return &getBody();}
+        /// Returns the results types that the callable region produces when
+        /// executed.
+        ::mlir::ArrayRef<::mlir::Type> getCallableResults() {
+            return getFunctionType().getResults();
+        }
+
+        /// Returns the argument attributes for all callable region arguments or
+        /// null if there are none.
+        ::mlir::ArrayAttr getCallableArgAttrs() {
+            return getArgAttrs().value_or(nullptr);
+        }
+
+        /// Returns the result attributes for all callable region results or null if
+        /// there are none.
+        ::mlir::ArrayAttr getCallableResAttrs() {
+            return getResAttrs().value_or(nullptr);
+        }
 
         // Method of CallableOpInterface
         llvm::ArrayRef<mlir::Type> getArgumentTypes() {return getFunctionType().getInputs();}
@@ -116,7 +130,30 @@ def FunctionOp : AtemIROp<"function",
 
         // Method of RegionKindInterface
         static mlir::RegionKind getRegionKind(unsigned idx) { return mlir::RegionKind::SSACFG; }
+
+         /// Hook for OpTrait::FunctionOpInterfaceTrait, called after verifying that
+        /// the 'type' attribute is present and checks if it holds a function type.
+        /// Ensures getType, getNumFuncArguments, and getNumFuncResults can be
+        /// called safely.
+        ::mlir::LogicalResult verifyType();
+
+        //===------------------------------------------------------------------===//
+        // SymbolOpInterface Methods
+        //===------------------------------------------------------------------===//
+
+        bool isDeclaration();
+
+        // FIXME: should be shared with GlobalOp extra declaration.
+        bool isDeclarationForLinker() {
+            if (atemir::isAvailableExternallyLinkage(getLinkage()))
+                return true;
+
+            return isDeclaration();
+        }
     }];
+
+    let hasCustomAssemblyFormat = 1;
+    let hasVerifier = 1;
 }
 
 def CallOp : AtemIROp<"call", [CallOpInterface]> {
@@ -477,7 +514,7 @@ def AllocateOp
         Examples:
         ```mlir
         //count: var int32 = 3
-        %0 = atemir.allocate !atemir.int<s, 32>, !atemir.ptr<!atemir.int<s, 32>>, ["count", init] {alignment = 4 : !atemir.int<s, 64>}
+        %0 = atemir.allocate !atemir.int<s, 32>, !atemir.ptr<!atemir.int<s, 32>>, ["count", init] {alignment = 4 : Int64}
         ```
     }];
 

@@ -140,7 +140,7 @@ def AtemFunctionType
     : AtemIRType<"Function", "function"> {
     let summary = "AtemIR function type";
     let description = [{
-        `!atemir.function` is a function type. It contains a single return type and a
+        `!atemir.function` is a function type. It contains a list of return type and a
         list of parameter types.
 
         Example:
@@ -166,17 +166,18 @@ def AtemFunctionType
 
     let extraClassDeclaration = [{
         /// Returns the `i`th input operand type. Asserts if out of bounds.
-        auto getInput(unsigned i) -> ::mlir::Type const { return getInputs()[i]; }
+        auto getInput(unsigned i) const -> ::mlir::Type { return getInputs()[i]; }
 
         /// Returns the number of arguments to the function.
-        auto getNumInputs() -> unsigned const { return getInputs().size(); }
+        auto getNumInputs() const -> unsigned { return getInputs().size(); }
 
         /// Returns whether the function is returns void.
-        auto isReturningUnit() -> bool const;
+        auto isReturningUnit() const -> bool;
 
         /// Returns a clone of this function type with the given argument
         /// and result types.
-        auto clone(::mlir::TypeRange inputs, ::mlir::TypeRange results) -> ::atemir::FunctionType const;
+        auto clone(::mlir::TypeRange inputs, ::mlir::TypeRange results) const
+         -> ::atemir::FunctionType;
     }];
 }
 

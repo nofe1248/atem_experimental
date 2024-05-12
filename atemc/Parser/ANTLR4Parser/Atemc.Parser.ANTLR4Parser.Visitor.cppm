@@ -7,6 +7,13 @@ module;
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/ScopedHashTable.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/Twine.h"
+
 #include "AtemIR/Dialect/include/AtemIRAttrs.h"
 #include "AtemIR/Dialect/include/AtemIRDialect.h"
 #include "AtemIR/Dialect/include/AtemIROps.h"
@@ -26,6 +33,15 @@ export namespace atemc::parser::antlr4
 {
     class AtemIRBuilderVisitor final : public atemc_antlr::AtemParserBaseVisitor
     {
+        struct VariableSymbol
+        {
+            mlir::Value value;
+            atemc_antlr::AtemParser::Variable_declaration_expressionContext* ctx;
+        };
+
+        using SymbolTableT = llvm::ScopedHashTable<llvm::StringRef, VariableSymbol>;
+        SymbolTableT symbol_table_;
+
         atemc_antlr::AtemParser::ProgramContext *tree_;
         mlir::MLIRContext &context_;
         mlir::OpBuilder builder_;

@@ -45,6 +45,67 @@ auto atemir::AtemIRDialect::registerOperations() -> void
         >();
 }
 
+namespace
+{
+template <typename Ty> struct EnumTraits
+{
+};
+} // namespace
+
+#define REGISTER_ENUM_TYPE(Ty)                                                                                         \
+    template <> struct EnumTraits<Ty>                                                                                  \
+    {                                                                                                                  \
+        static mlir::StringRef stringify(Ty value)                                                                     \
+        {                                                                                                              \
+            return stringify##Ty(value);                                                                               \
+        }                                                                                                              \
+        static unsigned getMaxEnumVal()                                                                                \
+        {                                                                                                              \
+            return getMaxEnumValFor##Ty();                                                                             \
+        }                                                                                                              \
+    }
+#define REGISTER_ENUM_TYPE_WITH_NS(NS, Ty)                                                                             \
+    template <> struct EnumTraits<NS::Ty>                                                                              \
+    {                                                                                                                  \
+        static mlir::StringRef stringify(NS::Ty value)                                                                 \
+        {                                                                                                              \
+            return NS::stringify##Ty(value);                                                                           \
+        }                                                                                                              \
+        static unsigned getMaxEnumVal()                                                                                \
+        {                                                                                                              \
+            return NS::getMaxEnumValFor##Ty();                                                                         \
+        }                                                                                                              \
+    }
+
+namespace
+{
+using namespace atemir;
+REGISTER_ENUM_TYPE(GlobalLinkageKind);
+} // namespace
+
+static auto parseOptionalKeywordAlternative(mlir::AsmParser &parser, mlir::ArrayRef<mlir::StringRef> keywords) -> int
+{
+    for (auto en : llvm::enumerate(keywords))
+    {
+        if (mlir::succeeded(parser.parseOptionalKeyword(en.value())))
+            return en.index();
+    }
+    return -1;
+}
+
+template <typename EnumTy, typename RetTy = EnumTy>
+static auto parseOptionalAtemIRKeyword(mlir::AsmParser &parser, EnumTy defaultValue) -> RetTy
+{
+    mlir::SmallVector<mlir::StringRef, 10> names;
+    for (unsigned i = 0, e = EnumTraits<EnumTy>::getMaxEnumVal(); i <= e; ++i)
+        names.push_back(EnumTraits<EnumTy>::stringify(static_cast<EnumTy>(i)));
+
+    int index = parseOptionalKeywordAlternative(parser, names);
+    if (index == -1)
+        return static_cast<RetTy>(defaultValue);
+    return static_cast<RetTy>(index);
+}
+
 static auto parseConstantValue(mlir::OpAsmParser &parser, mlir::Attribute &valueAttr) -> mlir::ParseResult
 {
     mlir::NamedAttrList attr;
@@ -162,61 +223,188 @@ static auto printGlobalOpTypeAndInitialValue(mlir::OpAsmPrinter &p, atemir::Glob
     }
 }
 
-auto atemir::FunctionOp::create(mlir::Location location, mlir::StringRef name, FunctionType type,
-                                mlir::ArrayRef<mlir::NamedAttribute> attrs) -> FunctionOp
+static auto getLinkageAttrNameString() -> mlir::StringRef
 {
-    mlir::OpBuilder builder(location->getContext());
-    mlir::OperationState state(location, getOperationName());
-    build(builder, state, name, type, attrs);
-    return mlir::cast<FunctionOp>(mlir::Operation::create(state));
-}
-auto atemir::FunctionOp::create(mlir::Location location, mlir::StringRef name, FunctionType type,
-                                mlir::Operation::dialect_attr_range attrs) -> FunctionOp
-{
-    mlir::SmallVector<mlir::NamedAttribute, 8> attrRef(attrs);
-    return create(location, name, type, llvm::ArrayRef(attrRef));
-}
-auto atemir::FunctionOp::create(mlir::Location location, mlir::StringRef name, atemir::FunctionType type,
-                                mlir::ArrayRef<mlir::NamedAttribute> attrs,
-                                mlir::ArrayRef<mlir::DictionaryAttr> argAttrs) -> FunctionOp
-{
-    FunctionOp func = create(location, name, type, attrs);
-    func.setAllArgAttrs(argAttrs);
-    return func;
+    return "linkage";
 }
 
 auto atemir::FunctionOp::build(mlir::OpBuilder &builder, mlir::OperationState &state, mlir::StringRef name,
-                               FunctionType type, mlir::ArrayRef<mlir::NamedAttribute> attrs,
+                               FunctionType type, GlobalLinkageKind linkage, mlir::ArrayRef<mlir::NamedAttribute> attrs,
                                mlir::ArrayRef<mlir::DictionaryAttr> argAttrs) -> void
 {
+    state.addRegion();
     state.addAttribute(mlir::SymbolTable::getSymbolAttrName(), builder.getStringAttr(name));
     state.addAttribute(getFunctionTypeAttrName(state.name), mlir::TypeAttr::get(type));
+    state.addAttribute(getLinkageAttrNameString(), GlobalLinkageKindAttr::get(builder.getContext(), linkage));
     state.attributes.append(attrs.begin(), attrs.end());
-    state.addRegion();
-
     if (argAttrs.empty())
+    {
         return;
-    assert(type.getNumInputs() == argAttrs.size());
-    mlir::function_interface_impl::addArgAndResultAttrs(builder, state, argAttrs, /*resultAttrs=*/std::nullopt,
-                                                        getArgAttrsAttrName(state.name),
-                                                        getResAttrsAttrName(state.name));
+    }
+
+    mlir::function_interface_impl::addArgAndResultAttrs(
+        builder, state, argAttrs, std::nullopt, getArgAttrsAttrName(state.name), getResAttrsAttrName(state.name));
 }
 
-auto atemir::FunctionOp::parse(mlir::OpAsmParser &parser, mlir::OperationState &result) -> mlir::ParseResult
+auto atemir::FunctionOp::parse(mlir::OpAsmParser &parser, mlir::OperationState &state) -> mlir::ParseResult
 {
-    auto buildFuncType = [](mlir::Builder &builder, mlir::ArrayRef<mlir::Type> argTypes,
-                            mlir::ArrayRef<mlir::Type> results, mlir::function_interface_impl::VariadicFlag,
-                            std::string &) { return builder.getFunctionType(argTypes, results); };
+    mlir::SMLoc loc = parser.getCurrentLocation();
 
-    return mlir::function_interface_impl::parseFunctionOp(
-        parser, result, /*allowVariadic=*/false, getFunctionTypeAttrName(result.name), buildFuncType,
-        getArgAttrsAttrName(result.name), getResAttrsAttrName(result.name));
+    auto vis_name_attr = getSymVisibilityAttrName(state.name);
+
+    state.addAttribute(getLinkageAttrNameString(),
+                       GlobalLinkageKindAttr::get(
+                           parser.getContext(),
+                           parseOptionalAtemIRKeyword<GlobalLinkageKind>(parser, GlobalLinkageKind::ExternalLinkage)));
+    mlir::StringRef vis_attr_str;
+    if (parser.parseOptionalKeyword(&vis_attr_str, {"private", "public", "nested"}).succeeded())
+    {
+        state.addAttribute(vis_attr_str, parser.getBuilder().getStringAttr(vis_attr_str));
+    }
+
+    mlir::StringAttr name_attr;
+    mlir::SmallVector<mlir::OpAsmParser::Argument, 8> arguments;
+    mlir::SmallVector<mlir::DictionaryAttr, 1> result_attrs;
+    mlir::SmallVector<mlir::Type, 8> arg_types;
+    mlir::SmallVector<mlir::Type, 8> result_types;
+    auto &builder = parser.getBuilder();
+
+    if (parser.parseSymbolName(name_attr, mlir::SymbolTable::getSymbolAttrName(), state.attributes))
+    {
+        return mlir::failure();
+    }
+
+    bool is_variadic = false;
+    if (mlir::function_interface_impl::parseFunctionSignature(parser, true, arguments, is_variadic, result_types,
+                                                              result_attrs))
+    {
+        return mlir::failure();
+    }
+
+    for (auto &arg : arguments)
+    {
+        arg_types.push_back(arg.type);
+    }
+
+    if (result_types.empty())
+    {
+        result_types.push_back(atemir::UnitType::get(builder.getContext()));
+    }
+
+    auto func_type = atemir::FunctionType::get(arg_types, result_types);
+
+    if (not func_type)
+    {
+        return mlir::failure();
+    }
+
+    state.addAttribute(getFunctionTypeAttrName(state.name), mlir::TypeAttr::get(func_type));
+
+    if (parser.parseOptionalAttrDictWithKeyword(state.attributes))
+    {
+        return mlir::failure();
+    }
+
+    assert(result_attrs.size() == result_types.size());
+    mlir::function_interface_impl::addArgAndResultAttrs(
+        builder, state, arguments, result_attrs, getArgAttrsAttrName(state.name), getResAttrsAttrName(state.name));
+
+    auto *body = state.addRegion();
+    mlir::OptionalParseResult parse_result = parser.parseOptionalRegion(*body, arguments, false);
+    if (parse_result.has_value())
+    {
+        if (failed(*parse_result))
+        {
+            return mlir::failure();
+        }
+        if (body->empty())
+        {
+            return parser.emitError(loc, "expected non-empty function body");
+        }
+    }
+    return mlir::success();
 }
 
 auto atemir::FunctionOp::print(mlir::OpAsmPrinter &p) -> void
 {
-    mlir::function_interface_impl::printFunctionOp(p, *this, /*isVariadic=*/false, getFunctionTypeAttrName(),
-                                                   getArgAttrsAttrName(), getResAttrsAttrName());
+    p << " ";
+    if (getLinkage() != GlobalLinkageKind::ExternalLinkage)
+    {
+        p << stringifyGlobalLinkageKind(getLinkage()) << ' ';
+    }
+
+    auto vis = getVisibility();
+    if (vis != mlir::SymbolTable::Visibility::Public)
+    {
+        p << vis << " ";
+    }
+
+    p.printSymbolName(getSymName());
+    auto func_type = getFunctionType();
+    mlir::SmallVector<mlir::Type, 8> result_types;
+    if (not func_type.isReturningUnit())
+    {
+        mlir::function_interface_impl::printFunctionSignature(p, *this, func_type.getInputs(), false,
+                                                              func_type.getResults());
+    }
+    else
+    {
+        mlir::function_interface_impl::printFunctionSignature(p, *this, func_type.getInputs(), false, {});
+    }
+    mlir::function_interface_impl::printFunctionAttributes(p, *this,
+                                                           {
+                                                               getFunctionTypeAttrName(),
+                                                               getLinkageAttrName(),
+                                                               getSymVisibilityAttrName(),
+                                                           });
+
+    auto &body = getOperation()->getRegion(0);
+    if (not body.empty())
+    {
+        p << ' ';
+        p.printRegion(body, false, true);
+    }
+}
+
+auto atemir::FunctionOp::isDeclaration() -> bool
+{
+    return isExternal();
+}
+
+mlir::LogicalResult atemir::FunctionOp::verifyType()
+{
+    auto type = getFunctionType();
+    if (!isa<atemir::FunctionType>(type))
+    {
+        return emitOpError(std::string{"requires '"}.append(getFunctionTypeAttrName().str()).append("' attribute of function type"));
+    }
+    return mlir::success();
+}
+
+// Verifies linkage types
+// - functions don't have 'common' linkage
+// - external functions have 'external' or 'extern_weak' linkage
+mlir::LogicalResult atemir::FunctionOp::verify()
+{
+    if (getLinkage() == GlobalLinkageKind::CommonLinkage)
+    {
+        return emitOpError() << "functions cannot have '"
+                             << stringifyGlobalLinkageKind(GlobalLinkageKind::CommonLinkage) << "' linkage";
+    }
+
+    if (isExternal())
+    {
+        if (getLinkage() != GlobalLinkageKind::ExternalLinkage and
+            getLinkage() != GlobalLinkageKind::ExternalWeakLinkage)
+        {
+            return emitOpError() << "external functions must have '"
+                                 << stringifyGlobalLinkageKind(GlobalLinkageKind::ExternalLinkage) << "' or '"
+                                 << stringifyGlobalLinkageKind(GlobalLinkageKind::ExternalWeakLinkage) << "' linkage";
+        }
+        return mlir::success();
+    }
+
+    return mlir::success();
 }
 
 auto atemir::ConstantOp::inferReturnTypes(mlir::MLIRContext *context, std::optional<mlir::Location> location,
@@ -500,8 +688,8 @@ mlir::LogicalResult atemir::GlobalOp::verify()
     // an attribute CIR supports.
     if (getInitialValue().has_value())
     {
-        //if (checkConstantTypes(getOperation(), getSymType(), *getInitialValue()).failed())
-        //    return mlir::failure();
+        // if (checkConstantTypes(getOperation(), getSymType(), *getInitialValue()).failed())
+        //     return mlir::failure();
     }
 
     // Verify that the constructor region, if present, has only one block which is
@@ -573,10 +761,10 @@ mlir::LogicalResult atemir::GlobalOp::verify()
     return mlir::success();
 }
 
-void atemir::GlobalOp::build(mlir::OpBuilder &odsBuilder, mlir::OperationState &odsState, mlir::StringRef sym_name, mlir::Type sym_type,
-                     bool isConstant, atemir::GlobalLinkageKind linkage,
-                     mlir::function_ref<void(mlir::OpBuilder &, mlir::Location)> ctorBuilder,
-                     mlir::function_ref<void(mlir::OpBuilder &, mlir::Location)> dtorBuilder)
+void atemir::GlobalOp::build(mlir::OpBuilder &odsBuilder, mlir::OperationState &odsState, mlir::StringRef sym_name,
+                             mlir::Type sym_type, bool isConstant, atemir::GlobalLinkageKind linkage,
+                             mlir::function_ref<void(mlir::OpBuilder &, mlir::Location)> ctorBuilder,
+                             mlir::function_ref<void(mlir::OpBuilder &, mlir::Location)> dtorBuilder)
 {
     odsState.addAttribute(getSymNameAttrName(odsState.name), odsBuilder.getStringAttr(sym_name));
     odsState.addAttribute(getSymTypeAttrName(odsState.name), ::mlir::TypeAttr::get(sym_type));
@@ -606,7 +794,8 @@ void atemir::GlobalOp::build(mlir::OpBuilder &odsBuilder, mlir::OperationState &
 /// during the flow of control. `operands` is a set of optional attributes that
 /// correspond to a constant value for each operand, or null if that operand is
 /// not a constant.
-void atemir::GlobalOp::getSuccessorRegions(mlir::RegionBranchPoint point, mlir::SmallVectorImpl<mlir::RegionSuccessor> &regions)
+void atemir::GlobalOp::getSuccessorRegions(mlir::RegionBranchPoint point,
+                                           mlir::SmallVectorImpl<mlir::RegionSuccessor> &regions)
 {
     // The `ctor` and `dtor` regions always branch back to the parent operation.
     if (!point.isParent())

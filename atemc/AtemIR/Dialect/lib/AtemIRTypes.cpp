@@ -124,9 +124,21 @@ auto atemir::IntegerType::parse(AsmParser &parser) -> Type
     return IntegerType::get(context, width, isSigned);
 }
 
-auto atemir::FunctionType::clone(::mlir::TypeRange inputs, ::mlir::TypeRange results) -> ::atemir::FunctionType const
+auto atemir::FunctionType::clone(::mlir::TypeRange inputs, ::mlir::TypeRange results) const -> ::atemir::FunctionType
 {
     return atemir::FunctionType::get(llvm::to_vector(inputs), llvm::to_vector(results));
+}
+
+auto atemir::FunctionType::isReturningUnit() const -> bool
+{
+    if (getResults().size() == 1)
+    {
+        if(mlir::isa<atemir::UnitType>(getResults().front()))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 auto atemir::IntegerType::print(mlir::AsmPrinter &printer) const -> void
