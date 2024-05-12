@@ -524,8 +524,43 @@ def LoadOp
     ]> {
     let summary = "Load value from specified memory address";
     let description = [{
+        `atemir.load` reads a value given an address backed up by a
+        `atemir.ptr` type. A unit attribute `deref` can be used to mark
+        the resulting value as used by another operation to dereference
+        a pointer. A unit attribute `volatile` can be used to indicate a
+        volatile loading. Load can be marked atomic by using 
+        `atomic(<mem_order>)`.
 
+        Examples:
+        ```mlir
+        //Read from local variable, address stored in %0.
+        %1 = atemir.load %0 : !atemir.ptr<!atemir.int<s, 64>> -> !atemir.int<s, 64>
+
+        //Load address from memory at address %0. %3 is used by at least one operation
+        //that dereferences a pointer.
+        %3 = atemir.load deref %0 : !atemir.ptr<!atemir.ptr<!atemir.int<s, 64>>> -> !atemir.ptr<!atemir.int<s, 64>>
+
+        /Perform a volatile load from address in %0
+        %4 = atemir.load volatile %0 : !atemir.ptr<!atemir.int<s, 64>> -> !atemir.int<s, 64>
+        ```
     }];
+
+    let arguments = (ins 
+        Arg<PointerType, "the address to load from", [MemRead]>:$addr,
+        UnitAttr:$isDeref,
+        UnitAttr:$isVolatile,
+        OptionalAttr<MemoryOrderKind>:$memoryOrder
+    );
+    let results = (outs AtemIRAnyType:$result);
+
+    let assemblyFormat = [{
+        (`deref` $isDeref^)?
+        (`volatile` $isVolatile^)?
+        (`atomic` `(` $memoryOrder^ `)`)?
+        $addr `:` type($addr) `->` type($result) attr-dict
+    }];
+    
+    let hasVerifier = 1;
 }
 
 def StoreOp
@@ -536,7 +571,126 @@ def StoreOp
             "::mlir::cast<::atemir::PointerType>($_self).getPointee()"
         >
     ]> {
+    let summary = "Store value to specified memory address";
+    let description = [{
+        `atemir.store` stores a value to the specified memory address. A
+        unit attribute `volatile` can be used to indicate a volatile store.
+        Store operation can be marked atomic by using `atomic(<mem_order>)`.
 
+        Examples:
+        ```mlir
+        //Store a function argument to local storage, address in %0.
+        atemir.store %arg0 : !atemir.int<s, 64>, %0 : !atemir.ptr<!atemir.int<s, 64>>
+
+        //Perform a volatile store into memory location at the address in %0
+        atemir.store volatile %arg0 : !atemir.int<s, 64>, %0 : !atemir.ptr<!atemir.int<s, 64>>
+        ```
+    }];
+
+    let arguments = (ins 
+        AtemIRAnyType:$value,
+        Arg<PointerType, "the address to store the value", [MemRead]>:$addr,
+        UnitAttr:$isVolatile,
+        OptionalAttr<MemoryOrderKind>:$memoryOrder
+    );
+    let results = (outs AtemIRAnyType:$result);
+
+    let assemblyFormat = [{
+        (`volatile` $isVolatile^)?
+        (`atomic` `(` $memoryOrder^ `)`)?
+        $value `:` type($value) `,` $addr `:` type($addr) attr-dict
+    }];
+    
+    let hasVerifier = 1;
+}
+
+def GlobalOp
+    : AtemIROp<"global", [
+        Symbol,
+        DeclareOpInterfaceMethods<RegionBranchOpInterface>,
+        NoRegionArguments
+    ]> {
+    let summary = "Defines a global variable in Atem";
+    let description = [{
+        `atemir.global` operation defines a named global variable in atem.
+
+        The backing memory for the variable is allocated statically and is 
+        described by the type of the variable.
+
+        The operation may has a `initial_value`. 
+        
+        The global variable can also be marked constant using the `constant`
+        unit attribute. Writing to such constant global variables is prohibited
+        and will be diagnosed by the compiler.
+
+        The `linkage` attribute is used to provide LLVM linkage information. 
+        Symbol visibility in `sym_visibility` is defined in terms of MLIR's
+        visibility and verified to be in accordance to `linkage`.
+
+        Examples:
+        ```mlir
+        atem.global public constant @c : !atemir.int<s, 64> = 4;
+        ```
+    }];
+    
+    let arguments = (ins
+        SymbolNameAttr:$sym_name,
+        OptionalAttr<StrAttr>:$sym_visibility,
+        TypeAttr:$sym_type,
+        Arg<GlobalLinkageKind, "linkage type">:$linkage,
+        OptionalAttr<TLSModel>:$tls_model,
+        OptionalAttr<AnyAttr>:$initial_value,
+        UnitAttr:$constant,
+        ConfinedAttr<OptionalAttr<I64Attr>, [IntMinValue<0>]>:$alignment
+    );
+    let regions = (region AnyRegion:$initRegion, AnyRegion:$deinitRegion);
+    let assemblyFormat = [{
+        ($sym_visibility^)?
+       (`constant` $constant^)?
+       $linkage
+       ($tls_model^)?
+       $sym_name
+       custom<GlobalOpTypeAndInitialValue>($sym_type, $initial_value, $initRegion, $deinitRegion)
+       attr-dict
+    }];
+
+    let extraClassDeclaration = [{
+        bool isDeclaration() {
+            return !getInitialValue() && getInitRegion().empty() && getDeinitRegion().empty();
+        }
+        bool hasInitializer() { return !isDeclaration(); }
+        bool hasAvailableExternallyLinkage() {
+            return atemir::isAvailableExternallyLinkage(getLinkage());
+        }
+        bool isDeclarationForLinker() {
+            if (hasAvailableExternallyLinkage())
+                return true;
+
+            return isDeclaration();
+        }
+
+        /// Whether the definition of this global may be replaced at link time.
+        bool isWeakForLinker() { return atemir::isWeakForLinker(getLinkage()); }
+    }];
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+        OpBuilder<(ins
+        // MLIR's default visibility is public.
+        "::mlir::StringRef":$sym_name,
+        "::mlir::Type":$sym_type,
+        CArg<"bool", "false">:$isConstant,
+        // CIR defaults to external linkage.
+        CArg<"atemir::GlobalLinkageKind",
+                "atemir::GlobalLinkageKind::ExternalLinkage">:$linkage,
+        CArg<"::mlir::function_ref<void(::mlir::OpBuilder &, ::mlir::Location)>",
+            "nullptr">:$ctorBuilder,
+        CArg<"::mlir::function_ref<void(::mlir::OpBuilder &, ::mlir::Location)>",
+            "nullptr">:$dtorBuilder)>
+    ];
+
+    let skipDefaultBuilders = 1;
+    let hasVerifier = 1;
 }
 
 #endif  //ATEM_IR_OPS_TD

@@ -200,7 +200,7 @@ def AtemIRAnyFloatingPointType : AnyTypeOf<[
 
 def AtemIRAnyType : AnyTypeOf<[
     IntegerType, BooleanType, Float16Type, Float32Type, Float64Type, Float80Type,
-    Float128Type, AtemFunctionType, UnitType
+    Float128Type, AtemFunctionType, UnitType, PointerType
 ]>;
 
 #endif //ATEM_IR_TYPES_TD

@@ -64,4 +64,86 @@ def CompareOpKind : I32EnumAttr<
     let cppNamespace = "::atemir";
 }
 
+def MemoryOrderKind_Relaxed : I32EnumAttrCase<"Relaxed", 0, "relaxed">;
+def MemoryOrderKind_Consume : I32EnumAttrCase<"Consume", 1, "consume">;
+def MemoryOrderKind_Acquire : I32EnumAttrCase<"Acquire", 2, "acquire">;
+def MemoryOrderKind_Release : I32EnumAttrCase<"Release", 3, "release">;
+def MemoryOrderKind_AcqRel : I32EnumAttrCase<"AcquireRelease", 4, "acq_rel">;
+def MemoryOrderKind_SeqCst : I32EnumAttrCase<"SequentiallyConsistent", 5, "seq_cst">;
+
+def MemoryOrderKind : I32EnumAttr<
+    "MemoryOrderKind",
+    "Memory order",
+    [
+        MemoryOrderKind_Relaxed, 
+        MemoryOrderKind_Consume, 
+        MemoryOrderKind_Acquire,
+        MemoryOrderKind_Release, 
+        MemoryOrderKind_AcqRel, 
+        MemoryOrderKind_SeqCst
+    ]> {
+  let cppNamespace = "::atemir";
+}
+
+// Externally visible function
+def Global_ExternalLinkage : I32EnumAttrCase<"ExternalLinkage", 0, "external">;
+// Available for inspection, not emission.
+def Global_AvailableExternallyLinkage : I32EnumAttrCase<"AvailableExternallyLinkage", 1, "available_externally">;
+// Keep one copy of function when linking (inline)
+def Global_LinkOnceAnyLinkage : I32EnumAttrCase<"LinkOnceAnyLinkage", 2, "linkonce">;
+// Same, but only replaced by something equivalent.
+def Global_LinkOnceODRLinkage : I32EnumAttrCase<"LinkOnceODRLinkage", 3, "linkonce_odr">;
+// Keep one copy of named function when linking (weak)
+def Global_WeakAnyLinkage : I32EnumAttrCase<"WeakAnyLinkage", 4, "weak">;
+// Same, but only replaced by something equivalent.
+def Global_WeakODRLinkage : I32EnumAttrCase<"WeakODRLinkage", 5, "weak_odr">;
+// Special purpose, only applies to global arrays
+def Global_AppendingLinkage : I32EnumAttrCase<"AppendingLinkage", 6, "appending">;
+// Rename collisions when linking (static functions).
+def Global_InternalLinkage : I32EnumAttrCase<"InternalLinkage", 7, "internal">;
+// Like Internal, but omit from symbol table, prefix it with
+// "atemir_" to prevent clash with MLIR's symbol "private".
+def Global_PrivateLinkage : I32EnumAttrCase<"PrivateLinkage", 8, "atemir_private">;
+// ExternalWeak linkage description.
+def Global_ExternalWeakLinkage : I32EnumAttrCase<"ExternalWeakLinkage", 9, "extern_weak">;
+// Tentative definitions.
+def Global_CommonLinkage : I32EnumAttrCase<"CommonLinkage", 10, "common">;
+
+/// An enumeration for the kinds of linkage for global values.
+def GlobalLinkageKind : I32EnumAttr<
+    "GlobalLinkageKind",
+    "Linkage type",
+    [
+        Global_ExternalLinkage, 
+        Global_AvailableExternallyLinkage,
+        Global_LinkOnceAnyLinkage, 
+        Global_LinkOnceODRLinkage,
+        Global_WeakAnyLinkage, 
+        Global_WeakODRLinkage,
+        Global_AppendingLinkage,
+        Global_InternalLinkage, 
+        Global_PrivateLinkage,
+        Global_ExternalWeakLinkage, 
+        Global_CommonLinkage
+     ]> {
+    let cppNamespace = "::atemir";
+}
+
+def TLS_GeneralDynamic : I32EnumAttrCase<"GeneralDynamic", 0, "tls_dyn">;
+def TLS_LocalDynamic : I32EnumAttrCase<"LocalDynamic", 1, "tls_local_dyn">;
+def TLS_InitialExec : I32EnumAttrCase<"InitialExec", 2, "tls_init_exec">;
+def TLS_LocalExec : I32EnumAttrCase<"LocalExec", 3, "tls_local_exec">;
+
+def TLSModel : I32EnumAttr<
+    "TLS_Model",
+    "TLS model",
+    [
+        TLS_GeneralDynamic, 
+        TLS_LocalDynamic, 
+        TLS_InitialExec, 
+        TLS_LocalExec
+    ]> {
+    let cppNamespace = "::atemir";
+}
+
 #endif //ATEM_IR_OP_ENUMS_TD
